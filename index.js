@@ -936,12 +936,24 @@ RedisClient.prototype.internal_send_command = function (command_obj) {
             args_copy[i] = this.options.prefix + args_copy[i];
         }
     }
+
     if (this.options.rename_commands && this.options.rename_commands[command]) {
         command = this.options.rename_commands[command];
     }
+
+    try {
+        command = command.split(' ');
+    } catch (_) {
+        command = [command];
+    }
+
     // Always use 'Multi bulk commands', but if passed any Buffer args, then do multiple writes, one for each arg.
     // This means that using Buffers in commands is going to be slower, so use Strings if you don't already have a Buffer.
-    command_str = '*' + (len + 1) + '\r\n$' + command.length + '\r\n' + command + '\r\n';
+    command_str = '*' + (len + command.length) + '\r\n';
+
+    command.forEach(function (arg) {
+        command_str += '$' + arg.length + '\r\n' + arg + '\r\n';
+    });
 
     if (big_data === false) { // Build up a string and send entire command in one write
         for (i = 0; i < len; i += 1) {
